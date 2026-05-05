@@ -4,24 +4,18 @@
  * ============================================
  *
  * 【使用说明】
- * 当前使用 MockAPI（localStorage 模拟）。
- * 当后端就绪后，只需：
- * 1. 将 USE_MOCK 改为 false
- * 2. 将 BASE_URL 改为真实后端地址
- * 3. 所有调用接口的代码无需修改
+ * 当前已连接真实后端：http://172.17.74.231:8080/api
+ * 如需切回 Mock 模式，将 USE_MOCK 改为 true 即可。
  *
- * 【请求/响应格式】
- * 所有接口统一响应格式：
- * {
- *   code: 200,        // 200=成功, 400=参数错误, 401=未登录, 404=不存在
- *   message: "成功",   // 提示信息
- *   data: {}          // 业务数据
- * }
+ * 【后端接口路径对照】
+ * 注册/登录: /api/auth/register, /api/auth/login
+ * 流水记录: /api/transactions (原 /api/records)
+ * 分类统计: /api/statistics/expense-pie (原 /api/stats/category)
  */
 
 // ========== 配置 ==========
-const USE_MOCK = true; // 改为 false 即切换到真实后端
-const BASE_URL = "http://localhost:8080/api"; // 真实后端地址
+const USE_MOCK = false; // 已切换到真实后端（改回 true 可用 Mock 模式）
+const BASE_URL = "http://172.17.74.231:8080/api"; // 后端服务地址
 
 // ========== 工具函数 ==========
 
@@ -29,7 +23,6 @@ const BASE_URL = "http://localhost:8080/api"; // 真实后端地址
  * 显示 Toast 提示
  */
 function showToast(message, type = "") {
-  // 移除已有的 toast
   const existing = document.querySelector(".toast");
   if (existing) existing.remove();
 
@@ -38,7 +31,6 @@ function showToast(message, type = "") {
   toast.textContent = message;
   document.body.appendChild(toast);
 
-  // 触发动画
   requestAnimationFrame(() => {
     toast.classList.add("show");
   });
@@ -53,7 +45,17 @@ function showToast(message, type = "") {
  * 获取当前用户（从 localStorage）
  */
 function getCurrentUser() {
-  return MockAPI.getCurrentUser();
+  if (USE_MOCK) {
+    return MockAPI.getCurrentUser();
+  }
+  return JSON.parse(localStorage.getItem("currentUser") || "null");
+}
+
+/**
+ * 保存当前用户信息到 localStorage
+ */
+function saveCurrentUser(user) {
+  localStorage.setItem("currentUser", JSON.stringify(user));
 }
 
 /**
@@ -72,7 +74,11 @@ function requireAuth() {
  * 退出登录
  */
 function logout() {
-  MockAPI.logout();
+  if (USE_MOCK) {
+    MockAPI.logout();
+  } else {
+    localStorage.removeItem("currentUser");
+  }
   window.location.href = "index.html";
 }
 
@@ -82,145 +88,161 @@ const API = {
   /**
    * 用户注册
    * POST /api/auth/register
-   * @param {string} username - 用户名
-   * @param {string} password - 密码
-   * @param {string} nickname - 昵称（可选）
-   * @returns {Promise<{code, message, data}>}
+   * 请求体: { username, password, nickname }
+   * 响应: { code: 200, message: "注册成功", data: { id, username, nickname } }
    */
   async register(username, password, nickname) {
     if (USE_MOCK) {
       return MockAPI.register({ username, password, nickname });
     }
-    // 【真实后端调用】
-    // const res = await fetch(`${BASE_URL}/auth/register`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ username, password, nickname })
-    // });
-    // return res.json();
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, nickname })
+    });
+    return res.json();
   },
 
   /**
    * 用户登录
    * POST /api/auth/login
-   * @param {string} username - 用户名
-   * @param {string} password - 密码
-   * @returns {Promise<{code, message, data: {id, username, nickname, token}}>}
+   * 请求体: { username, password }
+   * 响应: { code: 200, message: "登录成功", data: { id, username, nickname, token } }
    */
   async login(username, password) {
     if (USE_MOCK) {
       return MockAPI.login({ username, password });
     }
-    // 【真实后端调用】
-    // const res = await fetch(`${BASE_URL}/auth/login`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ username, password })
-    // });
-    // return res.json();
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    // 登录成功后保存用户信息和 token
+    if (data.code === 200 && data.data) {
+      saveCurrentUser(data.data);
+    }
+    return data;
   },
 
   /**
    * 获取流水列表
-   * GET /api/records?type=expense|income
-   * @param {string} type - 可选，"expense" 或 "income"
-   * @returns {Promise<{code, data: Array}>}
+   * GET /api/transactions?type=expense|income
+   * 【后端实际路径】/api/transactions（原 /api/records）
+   * 响应: { code: 200, data: [ { id, type, category, amount, date, remark } ] }
    */
   async getRecords(type) {
     if (USE_MOCK) {
       return MockAPI.getRecords({ type });
     }
-    // 【真实后端调用】
-    // const params = type ? `?type=${type}` : "";
-    // const user = getCurrentUser();
-    // const res = await fetch(`${BASE_URL}/records${params}`, {
-    //   headers: { "Authorization": `Bearer ${user.token}` }
-    // });
-    // return res.json();
+    const params = type ? `?type=${type}` : "";
+    const user = getCurrentUser();
+    const res = await fetch(`${BASE_URL}/transactions${params}`, {
+      headers: { "Authorization": `Bearer ${user.token}` }
+    });
+    return res.json();
   },
 
   /**
    * 添加收支记录
-   * POST /api/records
-   * @param {Object} record - { type, category, amount, date, remark }
-   * @returns {Promise<{code, message, data}>}
+   * POST /api/transactions
+   * 【后端实际路径】/api/transactions（原 /api/records）
+   * Body: {type, amount, category, date, remark}
+   * 响应: { code: 200, message: "添加成功", data: { id, ... } }
    */
   async addRecord(record) {
     if (USE_MOCK) {
       return MockAPI.addRecord(record);
     }
-    // 【真实后端调用】
-    // const user = getCurrentUser();
-    // const res = await fetch(`${BASE_URL}/records`, {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     "Authorization": `Bearer ${user.token}`
-    //   },
-    //   body: JSON.stringify(record)
-    // });
-    // return res.json();
+    const user = getCurrentUser();
+    // 按后端要求的字段顺序发送
+    const body = {
+      type: record.type,
+      amount: record.amount,
+      category: record.category,
+      date: record.date,
+      remark: record.remark
+    };
+    const res = await fetch(`${BASE_URL}/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${user.token}`
+      },
+      body: JSON.stringify(body)
+    });
+    return res.json();
   },
 
   /**
    * 编辑记录
-   * PUT /api/records/:id
-   * @param {number} id - 记录 ID
-   * @param {Object} record - { type, category, amount, date, remark }
-   * @returns {Promise<{code, message, data}>}
+   * PUT /api/transactions/{id}
+   * 【后端实际路径】/api/transactions/{id}（原 /api/records/:id）
+   * 响应: { code: 200, message: "修改成功", data: { ... } }
    */
   async updateRecord(id, record) {
     if (USE_MOCK) {
       return MockAPI.updateRecord(id, record);
     }
-    // 【真实后端调用】
-    // const user = getCurrentUser();
-    // const res = await fetch(`${BASE_URL}/records/${id}`, {
-    //   method: "PUT",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     "Authorization": `Bearer ${user.token}`
-    //   },
-    //   body: JSON.stringify(record)
-    // });
-    // return res.json();
+    const user = getCurrentUser();
+    const body = {
+      type: record.type,
+      amount: record.amount,
+      category: record.category,
+      date: record.date,
+      remark: record.remark
+    };
+    const res = await fetch(`${BASE_URL}/transactions/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${user.token}`
+      },
+      body: JSON.stringify(body)
+    });
+    return res.json();
   },
 
   /**
    * 删除记录
-   * DELETE /api/records/:id
-   * @param {number} id - 记录 ID
-   * @returns {Promise<{code, message}>}
+   * DELETE /api/transactions/{id}
+   * 【后端实际路径】/api/transactions/{id}（原 /api/records/:id）
+   * 响应: { code: 200, message: "删除成功" }
    */
   async deleteRecord(id) {
     if (USE_MOCK) {
       return MockAPI.deleteRecord(id);
     }
-    // 【真实后端调用】
-    // const user = getCurrentUser();
-    // const res = await fetch(`${BASE_URL}/records/${id}`, {
-    //   method: "DELETE",
-    //   headers: { "Authorization": `Bearer ${user.token}` }
-    // });
-    // return res.json();
+    const user = getCurrentUser();
+    const res = await fetch(`${BASE_URL}/transactions/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${user.token}` }
+    });
+    return res.json();
   },
 
   /**
-   * 按分类统计
-   * GET /api/stats/category?type=expense
-   * @param {string} type - "expense" 或 "income"
-   * @returns {Promise<{code, data: Array<{category, total, count}>}>}
+   * 按分类统计（支出饼图）
+   * GET /api/statistics/expense-pie?yearMonth=2025-05
+   * 【后端实际路径】/api/statistics/expense-pie（原 /api/stats/category）
+   * 响应: 饼图数据格式，如需报表用 /api/statistics/monthly-report
    */
   async getStatsByCategory(type) {
     if (USE_MOCK) {
       return MockAPI.getStatsByCategory({ type });
     }
-    // 【真实后端调用】
-    // const user = getCurrentUser();
-    // const res = await fetch(`${BASE_URL}/stats/category?type=${type}`, {
-    //   headers: { "Authorization": `Bearer ${user.token}` }
-    // });
-    // return res.json();
+    const user = getCurrentUser();
+    // 获取当前年月，格式：2025-05
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const res = await fetch(`${BASE_URL}/statistics/expense-pie?yearMonth=${yearMonth}`, {
+      headers: { "Authorization": `Bearer ${user.token}` }
+    });
+    const data = await res.json();
+    // 如果后端返回饼图格式，需要适配成前端需要的 {category, total, count} 格式
+    // 这里假设后端返回格式兼容，如果不兼容需要额外转换
+    return data;
   },
 
   /**
