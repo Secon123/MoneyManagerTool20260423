@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人记账 - 登录</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <!-- 标题 -->
+      <h1 class="auth-title" id="authTitle">💰 记账助手</h1>
+      <p class="auth-subtitle" id="authSubtitle">登录你的账号</p>
+
+      <!-- 登录表单 -->
+      <form id="loginForm" onsubmit="return false;">
+        <div class="form-group">
+          <label for="loginUsername">用户名</label>
+          <input type="text" id="loginUsername" placeholder="请输入用户名" autocomplete="username">
+          <div class="error-msg" id="loginUsernameError">请输入用户名</div>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">密码</label>
+          <input type="password" id="loginPassword" placeholder="请输入密码" autocomplete="current-password">
+          <div class="error-msg" id="loginPasswordError">请输入密码</div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="loginBtn" onclick="handleLogin()">登 录</button>
+        <div class="auth-switch">
+          还没有账号？<a href="javascript:void(0)" onclick="showRegister()">去注册</a>
+        </div>
+      </form>
+
+      <!-- 注册表单（默认隐藏） -->
+      <form id="registerForm" style="display: none;" onsubmit="return false;">
+        <div class="form-group">
+          <label for="regUsername">用户名</label>
+          <input type="text" id="regUsername" placeholder="请输入用户名（至少3位）" autocomplete="username">
+          <div class="error-msg" id="regUsernameError">请输入用户名（至少3位）</div>
+        </div>
+        <div class="form-group">
+          <label for="regNickname">昵称</label>
+          <input type="text" id="regNickname" placeholder="请输入昵称（选填）">
+        </div>
+        <div class="form-group">
+          <label for="regPassword">密码</label>
+          <input type="password" id="regPassword" placeholder="请输入密码（至少6位）" autocomplete="new-password">
+          <div class="error-msg" id="regPasswordError">请输入密码（至少6位）</div>
+        </div>
+        <div class="form-group">
+          <label for="regPassword2">确认密码</label>
+          <input type="password" id="regPassword2" placeholder="请再次输入密码" autocomplete="new-password">
+          <div class="error-msg" id="regPassword2Error">两次密码不一致</div>
+        </div>
+        <button type="submit" class="btn btn-primary" onclick="handleRegister()">注 册</button>
+        <div class="auth-switch">
+          已有账号？<a href="javascript:void(0)" onclick="showLogin()">去登录</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS 依赖 -->
+  <script src="js/mock.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
+
+</body>
+</html>
