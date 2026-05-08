@@ -1,11 +1,14 @@
 /**
  * ============================================
- * 登录/注册页逻辑
+ * 登录/注册页逻辑（已对齐后端接口文档）
  * ============================================
+ *
+ * 后端登录返回: { token, userId, username }
+ * 后端注册: email 字段暂存昵称（非必填）
+ * 前端显示昵称时使用 username
  */
 
 // ========== 页面初始化 ==========
-// 如果已登录，直接跳转到主页面
 (function init() {
   const user = getCurrentUser();
   if (user) {
@@ -31,7 +34,7 @@ function showLogin() {
 }
 
 // ========== 表单校验工具 ==========
-function setError(groupId, errorId) {
+function setError(groupId) {
   document.getElementById(groupId).classList.add("has-error");
 }
 
@@ -51,24 +54,22 @@ async function handleLogin() {
   const password = document.getElementById("loginPassword").value;
   let hasError = false;
 
-  // 校验
   if (!username) {
-    setError("loginUsername", "loginUsernameError");
+    setError("loginUsername");
     hasError = true;
   }
   if (!password) {
-    setError("loginPassword", "loginPasswordError");
+    setError("loginPassword");
     hasError = true;
   }
   if (hasError) return;
 
-  // 禁用按钮，防止重复提交
   const btn = document.getElementById("loginBtn");
   btn.disabled = true;
   btn.textContent = "登录中...";
 
   try {
-    // 【调接口 - 登录】
+    // 【调接口 - 登录 POST /auth/login】
     const res = await API.login(username, password);
 
     if (res.code === 200) {
@@ -77,7 +78,7 @@ async function handleLogin() {
         window.location.href = "app.html";
       }, 500);
     } else {
-      showToast(res.message, "error");
+      showToast(res.message || "登录失败", "error");
     }
   } catch (e) {
     showToast("网络错误，请重试", "error");
@@ -97,39 +98,37 @@ async function handleRegister() {
   const password2 = document.getElementById("regPassword2").value;
   let hasError = false;
 
-  // 校验
   if (!username || username.length < 3) {
-    setError("regUsername", "regUsernameError");
+    setError("regUsername");
     hasError = true;
   }
   if (!password || password.length < 6) {
-    setError("regPassword", "regPasswordError");
+    setError("regPassword");
     hasError = true;
   }
   if (password !== password2) {
-    setError("regPassword2", "regPassword2Error");
+    setError("regPassword2");
     hasError = true;
   }
   if (hasError) return;
 
-  // 禁用按钮
   const btn = document.querySelector("#registerForm .btn");
   btn.disabled = true;
   btn.textContent = "注册中...";
 
   try {
-    // 【调接口 - 注册】
+    // 【调接口 - 注册 POST /auth/register】
+    // 昵称通过 email 字段传给后端暂存
     const res = await API.register(username, password, nickname || null);
 
     if (res.code === 200) {
       showToast("注册成功，请登录", "success");
-      // 切换到登录表单
       setTimeout(() => {
         showLogin();
         document.getElementById("loginUsername").value = username;
       }, 500);
     } else {
-      showToast(res.message, "error");
+      showToast(res.message || "注册失败", "error");
     }
   } catch (e) {
     showToast("网络错误，请重试", "error");
