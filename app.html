@@ -21,14 +21,10 @@
     <div id="page-add" class="tab-page">
       <div class="card">
         <h2 class="card-title">记一笔</h2>
-
-        <!-- 收入/支出切换 -->
         <div class="type-switch">
-          <button class="type-btn expense-btn active" onclick="switchType('expense')">支出</button>
-          <button class="type-btn income-btn" onclick="switchType('income')">收入</button>
+          <button class="type-btn expense-btn active" onclick="switchType('EXPENSE')">支出</button>
+          <button class="type-btn income-btn" onclick="switchType('INCOME')">收入</button>
         </div>
-
-        <!-- 记账表单 -->
         <form id="addForm" onsubmit="return false;">
           <div class="form-group">
             <label for="addAmount">金额（元）</label>
@@ -37,9 +33,7 @@
           </div>
           <div class="form-group">
             <label for="addCategory">分类</label>
-            <select id="addCategory">
-              <!-- 动态填充 -->
-            </select>
+            <select id="addCategory"></select>
             <div class="error-msg">请选择分类</div>
           </div>
           <div class="form-group">
@@ -58,28 +52,32 @@
 
     <!-- ===== Tab 2: 流水列表页 ===== -->
     <div id="page-list" class="tab-page" style="display: none;">
-      <!-- 筛选 -->
       <div class="card" style="padding: 14px 20px;">
         <div class="flex-between">
           <span style="font-size: 14px; font-weight: 500;">流水记录</span>
           <div>
             <button class="btn btn-sm btn-outline filter-btn active-filter" data-type="" onclick="filterRecords('', this)">全部</button>
-            <button class="btn btn-sm btn-outline filter-btn" data-type="expense" onclick="filterRecords('expense', this)">支出</button>
-            <button class="btn btn-sm btn-outline filter-btn" data-type="income" onclick="filterRecords('income', this)">收入</button>
+            <button class="btn btn-sm btn-outline filter-btn" data-type="EXPENSE" onclick="filterRecords('EXPENSE', this)">支出</button>
+            <button class="btn btn-sm btn-outline filter-btn" data-type="INCOME" onclick="filterRecords('INCOME', this)">收入</button>
           </div>
         </div>
       </div>
-
-      <!-- 记录列表 -->
       <div class="card" id="recordListCard">
-        <div id="recordList">
-          <!-- 动态填充 -->
-        </div>
+        <div id="recordList"></div>
       </div>
+      <!-- 分页 -->
+      <div id="pagination" class="pagination" style="display: none;"></div>
     </div>
 
     <!-- ===== Tab 3: 统计页 ===== -->
     <div id="page-stats" class="tab-page" style="display: none;">
+      <!-- 月份选择 -->
+      <div class="card" style="padding: 14px 20px;">
+        <div class="flex-between">
+          <span style="font-size: 14px; font-weight: 500;">月度统计</span>
+          <input type="month" id="statsMonth" onchange="loadStats()">
+        </div>
+      </div>
       <!-- 汇总卡片 -->
       <div style="display: flex; gap: 12px;">
         <div class="stat-card" style="flex: 1;">
@@ -90,26 +88,75 @@
           <div class="stat-label">本月收入</div>
           <div class="stat-value income" id="totalIncome">¥0.00</div>
         </div>
+        <div class="stat-card" style="flex: 1;">
+          <div class="stat-label">本月结余</div>
+          <div class="stat-value" id="totalBalance" style="color: var(--primary);">¥0.00</div>
+        </div>
       </div>
-
       <!-- 分类统计表 -->
       <div class="card">
-        <h2 class="card-title">支出分类统计</h2>
+        <h2 class="card-title">支出分类明细</h2>
         <table class="data-table" id="statsTable">
           <thead>
             <tr>
               <th>分类</th>
-              <th>笔数</th>
-              <th>总金额</th>
+              <th>金额</th>
+              <th>占比</th>
             </tr>
           </thead>
-          <tbody id="statsBody">
-            <!-- 动态填充 -->
-          </tbody>
+          <tbody id="statsBody"></tbody>
         </table>
         <div class="empty-state" id="statsEmpty" style="display: none;">
           <div class="empty-icon">📊</div>
           <p>暂无支出记录</p>
+        </div>
+      </div>
+      <!-- 趋势图（表格展示） -->
+      <div class="card">
+        <h2 class="card-title">每日收支趋势</h2>
+        <div id="trendContent">
+          <div class="empty-state">
+            <div class="empty-icon">📈</div>
+            <p>选择月份后查看趋势</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 4: 预算管理页 ===== -->
+    <div id="page-budget" class="tab-page" style="display: none;">
+      <!-- 月份选择 -->
+      <div class="card" style="padding: 14px 20px;">
+        <div class="flex-between">
+          <span style="font-size: 14px; font-weight: 500;">预算管理</span>
+          <input type="month" id="budgetMonth" onchange="loadBudgets()">
+        </div>
+      </div>
+      <!-- 设置预算表单 -->
+      <div class="card">
+        <h2 class="card-title">设置预算</h2>
+        <form id="budgetForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="budgetCategory">分类</label>
+            <select id="budgetCategory"></select>
+            <div class="error-msg">请选择分类</div>
+          </div>
+          <div class="form-group">
+            <label for="budgetLimit">月度预算金额（元）</label>
+            <input type="number" id="budgetLimit" placeholder="请输入预算金额" step="0.01" min="0.01">
+            <div class="error-msg">请输入有效金额</div>
+          </div>
+          <button type="submit" class="btn btn-primary" onclick="handleSetBudget()">设置预算</button>
+        </form>
+      </div>
+      <!-- 预算列表 -->
+      <div class="card">
+        <h2 class="card-title">当月预算列表</h2>
+        <div id="budgetList">
+          <div class="empty-state">
+            <div class="empty-icon">💰</div>
+            <p>暂无预算设置</p>
+          </div>
         </div>
       </div>
     </div>
@@ -127,8 +174,8 @@
         <div class="form-group">
           <label>类型</label>
           <div class="type-switch" id="editTypeSwitch">
-            <button type="button" class="type-btn expense-btn" onclick="switchEditType('expense')">支出</button>
-            <button type="button" class="type-btn income-btn" onclick="switchEditType('income')">收入</button>
+            <button type="button" class="type-btn expense-btn" onclick="switchEditType('EXPENSE')">支出</button>
+            <button type="button" class="type-btn income-btn" onclick="switchEditType('INCOME')">收入</button>
           </div>
         </div>
         <div class="form-group">
@@ -138,9 +185,7 @@
         </div>
         <div class="form-group">
           <label for="editCategory">分类</label>
-          <select id="editCategory">
-            <!-- 动态填充 -->
-          </select>
+          <select id="editCategory"></select>
         </div>
         <div class="form-group">
           <label for="editDate">日期</label>
@@ -168,6 +213,10 @@
     <div class="tab-item" onclick="switchTab('stats', this)">
       <span class="tab-icon">📊</span>
       <span>统计</span>
+    </div>
+    <div class="tab-item" onclick="switchTab('budget', this)">
+      <span class="tab-icon">💰</span>
+      <span>预算</span>
     </div>
   </div>
 
