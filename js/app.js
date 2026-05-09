@@ -381,9 +381,97 @@ async function loadStats() {
     `).join("");
   }
 
+  // 加载饼图数据
+  loadPieChart(yearMonth);
+
   // 加载趋势数据
   loadTrend(yearMonth);
 }
+
+// ========== 饼图渲染 ==========
+let pieChartInstance = null;
+
+async function loadPieChart(yearMonth) {
+  const pieEl = document.getElementById("pieChart");
+  const pieEmpty = document.getElementById("pieEmpty");
+
+  // 【调接口 - 支出饼图 GET /statistics/expense-pie?yearMonth=】
+  const res = await API.getExpensePie(yearMonth);
+
+  if (res.code !== 200 || !res.data || !res.data.data || res.data.data.length === 0) {
+    pieEl.style.display = "none";
+    pieEmpty.style.display = "block";
+    return;
+  }
+
+  pieEl.style.display = "block";
+  pieEmpty.style.display = "none";
+
+  const pieData = res.data.data; // [{ name: "餐饮", value: 1200.50 }, ...]
+
+  // 初始化或复用 ECharts 实例
+  if (!pieChartInstance) {
+    pieChartInstance = echarts.init(pieEl);
+  }
+
+  // 计算总支出用于显示
+  const total = pieData.reduce((sum, item) => sum + item.value, 0);
+
+  const option = {
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: ¥{c} ({d}%)"
+    },
+    legend: {
+      bottom: "0%",
+      left: "center",
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { fontSize: 12 }
+    },
+    series: [
+      {
+        name: "支出分类",
+        type: "pie",
+        radius: ["40%", "70%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 8,
+          borderColor: "#fff",
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: "center"
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 16,
+            fontWeight: "bold",
+            formatter: "{b}\n¥{c}"
+          },
+          scale: true,
+          scaleSize: 10
+        },
+        labelLine: { show: false },
+        data: pieData
+      }
+    ],
+    // 使用预设颜色
+    color: ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de", "#3ba272", "#fc8452", "#9a60b4", "#ea7ccc"]
+  };
+
+  pieChartInstance.setOption(option);
+}
+
+// 窗口大小变化时重新调整饼图大小
+window.addEventListener("resize", function () {
+  if (pieChartInstance) {
+    pieChartInstance.resize();
+  }
+});
 
 async function loadTrend(yearMonth) {
   const trendEl = document.getElementById("trendContent");
