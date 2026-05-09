@@ -27,7 +27,7 @@
 
 // ========== 配置 ==========
 const USE_MOCK = false; // 切换到真实后端（改回 true 可用 Mock 模式）
-const BASE_URL = "http://172.17.74.231:8080/api"; // 后端服务地址
+const BASE_URL = "/api"; // 后端服务地址
 
 // ========== 工具函数 ==========
 
