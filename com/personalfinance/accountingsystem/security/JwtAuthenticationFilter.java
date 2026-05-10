@@ -32,21 +32,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * 白名单路径：不需要 token 的请求，直接放行
+     */
+    private boolean isWhiteListed(String uri) {
+        return uri.equals("/") ||
+                uri.equals("/index.html") ||
+                uri.equals("/app.html") ||
+                uri.equals("/login.html") ||
+                uri.startsWith("/css/") ||
+                uri.startsWith("/js/") ||
+                uri.startsWith("/api/auth/");
+    }
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
+
         String requestURI = request.getRequestURI();
 
-        // 只放行静态资源（前端页面、CSS、JS）
-        if (requestURI.startsWith("/js/") || requestURI.startsWith("/css/") ||
-                requestURI.equals("/index.html") || requestURI.equals("/app.html") ||
-                requestURI.equals("/login.html") || requestURI.equals("/favicon.ico")) {
+        // 白名单直接放行，不处理 JWT
+        if (isWhiteListed(requestURI)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // OPTIONS 预检请求直接放行
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
         log.info("收到请求: {} , Authorization头: {}", requestURI, request.getHeader("Authorization"));
+
         try {
             String token = getJwtFromRequest(request);
             if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
@@ -62,16 +81,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     UserContextHolder.setCurrentUserId(userId);
-                    log.info("用户认证成功: {} , 权限: {}", user.getUsername(), userDetails.getAuthorities());
+                    log.info("用户认证成功: {}", user.getUsername());
                 } else {
                     log.warn("用户不存在, userId: {}", userId);
                 }
             } else {
                 log.warn("未提供有效 token，路径：{}", requestURI);
+                // 这里不需要返回 403，交给后续过滤器处理（会返回 403 因为 anyRequest().authenticated()）
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication", ex);
         }
+
         filterChain.doFilter(request, response);
     }
 
